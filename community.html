@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Drexel Community — Campus Connect</title>
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <nav>
+        <a class="site-name" href="index.html">Campus Connect</a>
+        <a href="index.html" data-page="index.html">Home</a>
+        <a href="community.html" data-page="community.html">Community</a>
+        <a href="profile.html" data-page="profile.html">Profile</a>
+        <a href="login.html" data-page="login.html">Log in</a>
+      </nav>
+
+      <main>
+        <h1>Drexel University</h1>
+        <p>Browse Campus, Housing, and Co-ops discussions.</p>
+
+        <div class="categories">
+          <a href="community.html">All</a>
+          <a href="community.html?category=Campus">Campus</a>
+          <a href="community.html?category=Housing">Housing</a>
+          <a href="community.html?category=Co-ops">Co-ops</a>
+        </div>
+
+        <ul id="thread-list" class="thread-list"></ul>
+      </main>
+    </div>
+    <script src="js/data.js"></script>
+    <script src="js/nav.js"></script>
+    <script src="js/main.js"></script>
+  </body>
+</html>

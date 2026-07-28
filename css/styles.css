@@ -1,0 +1,100 @@
+/* Minimal layout only — no brand colors yet */
+
+body {
+  margin: 0;
+  padding: 0;
+  line-height: 1.5;
+}
+
+.container {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+nav {
+  margin-bottom: 1.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #ccc;
+}
+
+nav a {
+  margin-right: 1rem;
+}
+
+nav .site-name {
+  margin-right: 1.5rem;
+  font-weight: bold;
+}
+
+h1 {
+  margin-top: 0;
+}
+
+.form-group {
+  margin-bottom: 0.75rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.25rem;
+}
+
+.form-group input,
+.form-group textarea {
+  width: 100%;
+  max-width: 320px;
+  box-sizing: border-box;
+  padding: 0.35rem;
+}
+
+.categories {
+  margin: 1rem 0;
+}
+
+.categories a {
+  margin-right: 0.75rem;
+}
+
+.thread-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.thread-list li {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #ccc;
+}
+
+.thread-meta {
+  font-size: 0.9rem;
+}
+
+.comment {
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #ccc;
+}
+
+.comment-form textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 80px;
+  box-sizing: border-box;
+}
+
+.activity-list {
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+
+.cta-links a {
+  margin-right: 1rem;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 1rem;
+}
