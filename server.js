@@ -8,11 +8,14 @@ const PORT = process.env.PORT || 3000;
 const hostname = "localhost";
 
 app.use(express.json());
+//pretty print the json response
 app.set("json spaces", 2);
 
+// the .env is in the shared project drive
 let baseUrl = apiFile.SUPABASE_URL;
 let secretKey = apiFile.SUPABASE_SECRET_KEY;
 
+//get all users from the database 
 app.get("/api/users", (req, res) => {
   let url = `${baseUrl}/rest/v1/Users?select=*`;
 
@@ -35,7 +38,8 @@ app.get("/api/users", (req, res) => {
     });
 });
 
-app.post("/api/users", function (req, res) {
+//add a new user to the database and return the staus and the data of the user
+app.post("/api/users", (req, res) => {
   let url = `${baseUrl}/rest/v1/Users`;
 
   console.log("Sending new user to db(supabase)");
