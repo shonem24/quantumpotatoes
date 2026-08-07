@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const axios = require("axios");
 let apiFile = require("./env.json");
+const argon2 = require("argon2");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -14,6 +15,18 @@ app.set("json spaces", 2);
 // the .env is in the shared project drive
 let baseUrl = apiFile.SUPABASE_URL;
 let secretKey = apiFile.SUPABASE_SECRET_KEY;
+
+function hashPassword(password) {
+  return argon2.hash(password, {
+    type: argon2.argon2id,
+    memoryCost: 19456,
+    timeCost: 2,
+    parallelism: 1,
+  });
+}
+
+
+
 
 //get all users from the database 
 app.get("/api/users", (req, res) => {
@@ -38,9 +51,20 @@ app.get("/api/users", (req, res) => {
     });
 });
 
+
+
+
 //add a new user to the database and return the staus and the data of the user
-app.post("/api/users", (req, res) => {
+app.post("/api/users", async (req, res) => {
   let url = `${baseUrl}/rest/v1/Users`;
+  //hash the password using argon2
+  if (req.body.password) {
+    req.body.password = await hashPassword(req.body.password);
+    console.log("Hashed password:", req.body.password);
+  }
+  else {
+    return res.status(400).send({ error: "Password is required" });
+  }
 
   console.log("Sending new user to db(supabase)");
   // console.log(req.body);
@@ -63,6 +87,8 @@ app.post("/api/users", (req, res) => {
     });
   });
 });
+
+
 
 
 app.use(express.static(path.join(__dirname)));
