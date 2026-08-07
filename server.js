@@ -89,6 +89,46 @@ app.post("/api/users", async (req, res) => {
 });
 
 
+app.post("/api/users/login", async (req, res) => {
+  //format the email for sending as url
+  let email = encodeURIComponent(req.body.email);
+  let url = `${baseUrl}/rest/v1/Users?select=*&email=eq.${email}`;
+
+  if (!req.body.email || !req.body.password) {
+    return res.status(400).json({ error: "Email and password are required" });
+  }
+
+  //check if the email is in the database
+  console.log("calling supabase to get the user");
+  axios.get(url, {
+    headers: {
+      apikey: secretKey,
+      Authorization: `Bearer ${secretKey}`,
+    },
+  }).then(async response => {
+
+    if (response.data.length === 0) {
+      return res.status(404).json({ error: "Email not found" });
+    }
+
+    //supabase returns an array of objects, so we need to get the first object
+    let user = response.data[0];
+
+    let password = await argon2.verify(user.password, req.body.password);
+    delete user.password;
+
+    if (!password) {
+      return res.status(401).json({ error: "Invalid password" });
+    }
+
+    res.status(200);
+    return res.json({ message: "Login successful", user: user });
+    
+  }).catch(error => {
+    console.log(error);
+    return res.status(500).json({ error: "Failed to login" });
+  });
+});
 
 
 app.use(express.static(path.join(__dirname)));
