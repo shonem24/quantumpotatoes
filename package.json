@@ -7,6 +7,8 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.8",
+    "argon2": "^0.45.1",
     "express": "^4.21.2"
   }
 }
