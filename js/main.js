@@ -154,13 +154,82 @@
     }
   }
 
+  var CURRENT_USER_KEY = "currentUser";
+
+  function getCurrentUser() {
+    try {
+      var raw = localStorage.getItem(CURRENT_USER_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  function setCurrentUser(user) {
+    if (!user) {
+      localStorage.removeItem(CURRENT_USER_KEY);
+      return;
+    }
+    var safe = Object.assign({}, user);
+    delete safe.password;
+    localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(safe));
+  }
+
+  function clearCurrentUser() {
+    localStorage.removeItem(CURRENT_USER_KEY);
+  }
+
+  function showFormError(elementId, message) {
+    var element = document.getElementById(elementId);
+    if (!element) {
+      return;
+    }
+    if (message) {
+      element.textContent = message;
+      element.hidden = false;
+    } else {
+      element.textContent = "";
+      element.hidden = true;
+    }
+  }
+
   function wireAuthForms() {
     var loginForm = document.getElementById("login-form");
     if (loginForm) {
       loginForm.addEventListener("submit", function (event) {
         event.preventDefault();
-        alert("Sign-in will work once the backend is connected.");
-        window.location.href = "community.html";
+        showFormError("login-error", "");
+
+        var email = loginForm.email.value.trim();
+        var password = loginForm.password.value;
+
+        fetch("/api/users/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email, password: password }),
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok) {
+              showFormError(
+                "login-error",
+                result.data.error || "Login failed. Please try again."
+              );
+              return;
+            }
+            setCurrentUser(result.data.user);
+            window.location.href = "community.html";
+          })
+          .catch(function () {
+            showFormError(
+              "login-error",
+              "Could not reach the server. Is it running?"
+            );
+          });
       });
     }
 
@@ -168,11 +237,55 @@
     if (signupForm) {
       signupForm.addEventListener("submit", function (event) {
         event.preventDefault();
-        alert("Account creation will work once the backend is connected.");
-        window.location.href = "community.html";
+        showFormError("signup-error", "");
+
+        var payload = {
+          Username: signupForm.Username.value.trim(),
+          Displayname: signupForm.Displayname.value.trim(),
+          email: signupForm.email.value.trim(),
+          password: signupForm.password.value,
+          major: signupForm.major.value.trim() || null,
+          verified: false,
+          universityName: "Drexel University",
+        };
+
+        fetch("/api/users", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        })
+          .then(function (response) {
+            return response.json().then(function (data) {
+              return { ok: response.ok, data: data };
+            });
+          })
+          .then(function (result) {
+            if (!result.ok) {
+              showFormError(
+                "signup-error",
+                result.data.error || "Sign up failed. Please try again."
+              );
+              return;
+            }
+            var created = Array.isArray(result.data)
+              ? result.data[0]
+              : result.data;
+            setCurrentUser(created);
+            window.location.href = "community.html";
+          })
+          .catch(function () {
+            showFormError(
+              "signup-error",
+              "Could not reach the server. Is it running?"
+            );
+          });
       });
     }
   }
+
+  window.getCurrentUser = getCurrentUser;
+  window.setCurrentUser = setCurrentUser;
+  window.clearCurrentUser = clearCurrentUser;
 
   renderCommunity();
   renderThread();

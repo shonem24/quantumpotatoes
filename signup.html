@@ -20,8 +20,12 @@
         <h1>Sign up</h1>
         <form id="signup-form">
           <div class="form-group">
-            <label for="signup-name">Name</label>
-            <input id="signup-name" name="name" type="text" required />
+            <label for="signup-username">Username</label>
+            <input id="signup-username" name="Username" type="text" required />
+          </div>
+          <div class="form-group">
+            <label for="signup-displayname">Display name</label>
+            <input id="signup-displayname" name="Displayname" type="text" required />
           </div>
           <div class="form-group">
             <label for="signup-email">Email</label>
@@ -35,10 +39,7 @@
             <label for="signup-major">Major</label>
             <input id="signup-major" name="major" type="text" />
           </div>
-          <div class="form-group">
-            <label for="signup-year">Graduation year</label>
-            <input id="signup-year" name="year" type="number" min="2024" max="2035" />
-          </div>
+          <p id="signup-error" class="form-error" hidden></p>
           <button type="submit">Create account</button>
         </form>
         <p>Already have an account? <a href="login.html">Log in</a></p>
