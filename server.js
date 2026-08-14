@@ -3,6 +3,7 @@ const path = require("path");
 const axios = require("axios");
 let apiFile = require("./env.json");
 const argon2 = require("argon2");
+const postThread = require("./posts");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -130,6 +131,7 @@ app.post("/api/users/login", async (req, res) => {
   });
 });
 
+postThread(app, { baseUrl, secretKey, axios });
 
 app.use(express.static(path.join(__dirname)));
 
