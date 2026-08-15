@@ -4,55 +4,268 @@
     return params.get(name);
   }
 
+  function el(tag, className) {
+    var node = document.createElement(tag);
+    if (className) {
+      node.className = className;
+    }
+    return node;
+  }
+
+  function clear(node) {
+    while (node.firstChild) {
+      node.removeChild(node.firstChild);
+    }
+  }
+
+  function previewText(content, maxLen) {
+    var text = content || "";
+    if (text.length <= maxLen) {
+      return text;
+    }
+    return text.slice(0, maxLen).trim() + "...";
+  }
+
+  function formatDate(value) {
+    if (!value) {
+      return "";
+    }
+    return String(value).slice(0, 10);
+  }
+
+  function authorLabel(usersById, userId) {
+    var user = usersById[userId];
+    if (!user) {
+      return "User " + userId;
+    }
+    return user.Displayname || user.Username || "User " + userId;
+  }
+
+  function fetchJson(url, options) {
+    return fetch(url, options).then(function (response) {
+      return response.json().then(function (data) {
+        return { ok: response.ok, status: response.status, data: data };
+      });
+    });
+  }
+
+  function loadUsersById() {
+    return fetchJson("/api/users").then(function (result) {
+      var map = {};
+      if (!result.ok || !Array.isArray(result.data)) {
+        return map;
+      }
+      result.data.forEach(function (user) {
+        map[user.id] = user;
+      });
+      return map;
+    });
+  }
+
+  function highlightActiveCategory(category) {
+    var links = document.querySelectorAll(".categories a");
+    links.forEach(function (link) {
+      var href = link.getAttribute("href") || "";
+      var linkCategory = null;
+      try {
+        var url = new URL(href, window.location.origin);
+        linkCategory = url.searchParams.get("category");
+      } catch (err) {
+        linkCategory = null;
+      }
+
+      var isAll = !linkCategory && href.indexOf("category=") === -1;
+      var isActive = category
+        ? linkCategory &&
+          linkCategory.toLowerCase() === category.toLowerCase()
+        : isAll;
+
+      if (isActive) {
+        link.classList.add("is-active");
+      } else {
+        link.classList.remove("is-active");
+      }
+    });
+  }
+
   function renderCommunity() {
     var list = document.getElementById("thread-list");
     if (!list) {
       return;
     }
 
-    var category = getQueryParam("category");
-    var threads = THREADS;
+    setupCreateThreadForm();
 
+    var category = getQueryParam("category");
+    highlightActiveCategory(category);
+
+    var threadsUrl = "/api/threads";
     if (category) {
-      threads = THREADS.filter(function (thread) {
-        return thread.category.toLowerCase() === category.toLowerCase();
-      });
+      threadsUrl += "?category=" + encodeURIComponent(category);
     }
 
-    if (threads.length === 0) {
-      list.innerHTML = "<li>No threads in this category yet.</li>";
+    clear(list);
+    var loading = el("li");
+    loading.textContent = "Loading threads...";
+    list.appendChild(loading);
+
+    Promise.all([fetchJson(threadsUrl), loadUsersById()])
+      .then(function (results) {
+        var threadsResult = results[0];
+        var usersById = results[1];
+
+        clear(list);
+
+        if (!threadsResult.ok) {
+          var errItem = el("li");
+          errItem.textContent =
+            (threadsResult.data && threadsResult.data.error) ||
+            "Failed to load threads.";
+          list.appendChild(errItem);
+          return;
+        }
+
+        var threads = Array.isArray(threadsResult.data)
+          ? threadsResult.data
+          : [];
+
+        if (threads.length === 0) {
+          var empty = el("li");
+          empty.textContent = "No threads in this category yet.";
+          list.appendChild(empty);
+          return;
+        }
+
+        threads.forEach(function (thread) {
+          var item = el("li");
+
+          var meta = el("p", "thread-meta");
+          var metaParts = [thread.category || "Uncategorized"];
+          var date = formatDate(thread.createdAt || thread.created_at);
+          if (date) {
+            metaParts.push(date);
+          }
+          meta.textContent = metaParts.join(" · ");
+          item.appendChild(meta);
+
+          var titleWrap = el("p");
+          var titleLink = el("a");
+          titleLink.href = "thread.html?id=" + encodeURIComponent(thread.id);
+          titleLink.textContent = thread.title || "Untitled";
+          titleWrap.appendChild(titleLink);
+          item.appendChild(titleWrap);
+
+          var author = el("p");
+          author.textContent = authorLabel(usersById, thread.userId);
+          item.appendChild(author);
+
+          var preview = el("p");
+          preview.textContent = previewText(thread.content, 100);
+          item.appendChild(preview);
+
+          list.appendChild(item);
+        });
+      })
+      .catch(function () {
+        clear(list);
+        var errItem = el("li");
+        errItem.textContent = "Could not reach the server. Is it running?";
+        list.appendChild(errItem);
+      });
+  }
+
+  function setupCreateThreadForm() {
+    var form = document.getElementById("thread-form");
+    if (!form || form.getAttribute("data-setup") === "1") {
+      return;
+    }
+    form.setAttribute("data-setup", "1");
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      showFormError("thread-error", "");
+
+      var currentUser = getCurrentUser();
+      if (!currentUser || !currentUser.id) {
+        showFormError("thread-error", "Log in to create a thread.");
+        return;
+      }
+
+      var title = form.elements.namedItem("title").value.trim();
+      var category = form.elements.namedItem("category").value;
+      var content = form.elements.namedItem("content").value.trim();
+
+      if (!title || !category || !content) {
+        showFormError("thread-error", "Title, category, and content are required.");
+        return;
+      }
+
+      fetchJson("/api/threads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          title: title,
+          content: content,
+          category: category,
+        }),
+      })
+        .then(function (result) {
+          if (!result.ok) {
+            showFormError(
+              "thread-error",
+              (result.data && result.data.error) || "Failed to create thread."
+            );
+            return;
+          }
+
+          var created =
+            result.data && result.data.thread ? result.data.thread : null;
+          if (!created || !created.id) {
+            showFormError("thread-error", "Thread created but no id returned.");
+            return;
+          }
+
+          window.location.href =
+            "thread.html?id=" + encodeURIComponent(created.id);
+        })
+        .catch(function () {
+          showFormError(
+            "thread-error",
+            "Could not reach the server. Is it running?"
+          );
+        });
+    });
+  }
+
+  function renderCommentsList(commentsEl, comments, usersById) {
+    clear(commentsEl);
+
+    if (!comments.length) {
+      var empty = el("p");
+      empty.textContent = "No comments yet.";
+      commentsEl.appendChild(empty);
       return;
     }
 
-    list.innerHTML = threads
-      .map(function (thread) {
-        var author = getUserById(thread.authorId);
-        var authorName = author ? author.name : "Unknown";
-        var verified = formatVerified(author);
-        return (
-          "<li>" +
-          '<p class="thread-meta">' +
-          thread.category +
-          " · " +
-          thread.createdAt +
-          "</p>" +
-          '<p><a href="thread.html?id=' +
-          thread.id +
-          '">' +
-          thread.title +
-          "</a></p>" +
-          "<p>" +
-          authorName +
-          " " +
-          verified +
-          "</p>" +
-          "<p>" +
-          thread.preview +
-          "</p>" +
-          "</li>"
-        );
-      })
-      .join("");
+    comments.forEach(function (comment) {
+      var block = el("div", "comment");
+
+      var meta = el("p");
+      var metaParts = [authorLabel(usersById, comment.userId)];
+      var date = formatDate(comment.createdAt || comment.created_at);
+      if (date) {
+        metaParts.push(date);
+      }
+      meta.textContent = metaParts.join(" · ");
+      block.appendChild(meta);
+
+      var body = el("p");
+      body.textContent = comment.content || "";
+      block.appendChild(body);
+
+      commentsEl.appendChild(block);
+    });
   }
 
   function renderThread() {
@@ -62,53 +275,143 @@
     }
 
     var idParam = getQueryParam("id");
-    var threadId = idParam ? parseInt(idParam, 10) : THREADS[0].id;
-    var thread = getThreadById(threadId) || THREADS[0];
-    var author = getUserById(thread.authorId);
-
-    document.getElementById("thread-category").textContent = thread.category;
-    titleEl.textContent = thread.title;
-    document.getElementById("thread-meta").textContent =
-      (author ? author.name : "Unknown") +
-      " " +
-      formatVerified(author) +
-      " · " +
-      thread.createdAt;
-    document.getElementById("thread-body").textContent = thread.body;
-
-    var comments = getCommentsForThread(thread.id);
+    var categoryEl = document.getElementById("thread-category");
+    var metaEl = document.getElementById("thread-meta");
+    var bodyEl = document.getElementById("thread-body");
     var commentsEl = document.getElementById("comments");
-    if (comments.length === 0) {
-      commentsEl.innerHTML = "<p>No comments yet.</p>";
-    } else {
-      commentsEl.innerHTML = comments
-        .map(function (comment) {
-          var commentAuthor = getUserById(comment.authorId);
-          return (
-            '<div class="comment">' +
-            "<p>" +
-            (commentAuthor ? commentAuthor.name : "Unknown") +
-            " " +
-            formatVerified(commentAuthor) +
-            " · " +
-            comment.createdAt +
-            "</p>" +
-            "<p>" +
-            comment.body +
-            "</p>" +
-            "</div>"
-          );
-        })
-        .join("");
+    var form = document.getElementById("comment-form");
+
+    if (!idParam) {
+      categoryEl.textContent = "";
+      titleEl.textContent = "Thread not found";
+      metaEl.textContent = "";
+      bodyEl.textContent = "Missing thread id.";
+      clear(commentsEl);
+      if (form) {
+        form.hidden = true;
+      }
+      return;
     }
 
-    var form = document.getElementById("comment-form");
-    if (form) {
-      form.addEventListener("submit", function (event) {
-        event.preventDefault();
-        alert("Posting comments will work once the backend is connected.");
+    titleEl.textContent = "Loading...";
+    clear(commentsEl);
+
+    var threadId = idParam;
+    var usersById = {};
+
+    Promise.all([
+      fetchJson("/api/threads?id=" + encodeURIComponent(threadId)),
+      fetchJson("/api/threads/" + encodeURIComponent(threadId) + "/comments"),
+      loadUsersById(),
+    ])
+      .then(function (results) {
+        var threadResult = results[0];
+        var commentsResult = results[1];
+        usersById = results[2];
+
+        if (!threadResult.ok) {
+          categoryEl.textContent = "";
+          titleEl.textContent = "Thread not found";
+          metaEl.textContent = "";
+          bodyEl.textContent =
+            (threadResult.data && threadResult.data.error) ||
+            "Could not load this thread.";
+          clear(commentsEl);
+          if (form) {
+            form.hidden = true;
+          }
+          return;
+        }
+
+        var thread = threadResult.data;
+        categoryEl.textContent = thread.category || "";
+        titleEl.textContent = thread.title || "Untitled";
+
+        var metaParts = [authorLabel(usersById, thread.userId)];
+        var date = formatDate(thread.createdAt || thread.created_at);
+        if (date) {
+          metaParts.push(date);
+        }
+        metaEl.textContent = metaParts.join(" · ");
+        bodyEl.textContent = thread.content || "";
+
+        var comments =
+          commentsResult.ok && Array.isArray(commentsResult.data)
+            ? commentsResult.data
+            : [];
+        renderCommentsList(commentsEl, comments, usersById);
+
+        if (form) {
+          wireCommentForm(form, thread.id, usersById, commentsEl);
+        }
+      })
+      .catch(function () {
+        categoryEl.textContent = "";
+        titleEl.textContent = "Error";
+        metaEl.textContent = "";
+        bodyEl.textContent = "Could not reach the server. Is it running?";
+        clear(commentsEl);
       });
+  }
+
+  function wireCommentForm(form, threadId, usersById, commentsEl) {
+    if (form.getAttribute("data-wired") === "1") {
+      return;
     }
+    form.setAttribute("data-wired", "1");
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      showFormError("comment-error", "");
+
+      var currentUser = getCurrentUser();
+      if (!currentUser || !currentUser.id) {
+        showFormError("comment-error", "Log in to post a comment.");
+        return;
+      }
+
+      var content = form.body.value.trim();
+      if (!content) {
+        showFormError("comment-error", "Comment cannot be empty.");
+        return;
+      }
+
+      fetchJson("/api/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          userId: currentUser.id,
+          threadId: threadId,
+          content: content,
+        }),
+      })
+        .then(function (result) {
+          if (!result.ok) {
+            showFormError(
+              "comment-error",
+              (result.data && result.data.error) || "Failed to post comment."
+            );
+            return;
+          }
+
+          form.body.value = "";
+          return fetchJson(
+            "/api/threads/" + encodeURIComponent(threadId) + "/comments"
+          ).then(function (commentsResult) {
+            var comments =
+              commentsResult.ok && Array.isArray(commentsResult.data)
+                ? commentsResult.data
+                : [];
+            renderCommentsList(commentsEl, comments, usersById);
+          });
+        })
+        .catch(function () {
+          showFormError(
+            "comment-error",
+            "Could not reach the server. Is it running?"
+          );
+        });
+    });
   }
 
   function renderProfile() {

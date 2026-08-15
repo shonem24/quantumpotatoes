@@ -52,7 +52,8 @@ h1 {
 }
 
 .form-group input,
-.form-group textarea {
+.form-group textarea,
+.form-group select {
   width: 100%;
   max-width: 320px;
   box-sizing: border-box;
@@ -65,6 +66,11 @@ h1 {
 
 .categories a {
   margin-right: 0.75rem;
+}
+
+.categories a.is-active {
+  font-weight: bold;
+  text-decoration: underline;
 }
 
 .thread-list {
@@ -90,6 +96,17 @@ h1 {
 }
 
 .comment-form textarea {
+  width: 100%;
+  max-width: 100%;
+  min-height: 80px;
+  box-sizing: border-box;
+}
+
+.thread-form {
+  margin-bottom: 1.5rem;
+}
+
+.thread-form textarea {
   width: 100%;
   max-width: 100%;
   min-height: 80px;

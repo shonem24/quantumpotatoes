@@ -3,7 +3,11 @@ function postThread(app, { baseUrl, secretKey, axios }) {
     let url = `${baseUrl}/rest/v1/Threads?select=*`;
 
     if (req.query.id) {
-      url += `&id=eq.${req.query.id}`;
+      url += `&id=eq.${encodeURIComponent(req.query.id)}`;
+    }
+
+    if (req.query.category) {
+      url += `&category=eq.${encodeURIComponent(req.query.category)}`;
     }
 
     console.log("Sending request to db(supabase) for threads");

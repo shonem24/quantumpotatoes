@@ -27,6 +27,29 @@
           <a href="community.html?category=Co-ops">Co-ops</a>
         </div>
 
+        <h2>New thread</h2>
+        <form id="thread-form" class="thread-form">
+          <div class="form-group">
+            <label for="thread-title-input">Title</label>
+            <input id="thread-title-input" name="title" type="text" required />
+          </div>
+          <div class="form-group">
+            <label for="thread-category-input">Category</label>
+            <select id="thread-category-input" name="category" required>
+              <option value="">Select a category</option>
+              <option value="Campus">Campus</option>
+              <option value="Housing">Housing</option>
+              <option value="Co-ops">Co-ops</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="thread-content-input">Content</label>
+            <textarea id="thread-content-input" name="content" required></textarea>
+          </div>
+          <p id="thread-error" class="form-error" hidden></p>
+          <button type="submit">Post thread</button>
+        </form>
+
         <ul id="thread-list" class="thread-list"></ul>
       </main>
     </div>
