@@ -27,7 +27,13 @@ function hashPassword(password) {
 }
 
 
-
+function stripPassword(user) {
+  if (!user || typeof user !== "object") {
+    return user;
+  }
+  const { password, ...safeUser } = user;
+  return safeUser;
+}
 
 //get all users from the database 
 app.get("/api/users", (req, res) => {
@@ -41,8 +47,10 @@ app.get("/api/users", (req, res) => {
         Authorization: `Bearer ${secretKey}`,
       },
     }).then(response => {
-      // console.log(response.data);
-      res.status(200).json(response.data);
+      const users = Array.isArray(response.data)
+        ? response.data.map(stripPassword)
+        : response.data;
+      res.status(200).json(users);
     
     }).catch(error => {
       console.log(error);
@@ -61,14 +69,12 @@ app.post("/api/users", async (req, res) => {
   //hash the password using argon2
   if (req.body.password) {
     req.body.password = await hashPassword(req.body.password);
-    console.log("Hashed password:", req.body.password);
   }
   else {
     return res.status(400).send({ error: "Password is required" });
   }
 
   console.log("Sending new user to db(supabase)");
-  // console.log(req.body);
 
   axios.post(url, req.body, {
     //from superbase
@@ -79,8 +85,10 @@ app.post("/api/users", async (req, res) => {
       Prefer: "return=representation",
     },
   }).then(response => {
-    console.log(response.data);
-    res.status(200).json(response.data);
+    const data = Array.isArray(response.data)
+      ? response.data.map(stripPassword)
+      : stripPassword(response.data);
+    res.status(200).json(data);
   }).catch(error => {
     console.log(error);
     res.status(500).json({
