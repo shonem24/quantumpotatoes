@@ -4,6 +4,10 @@ const axios = require("axios");
 let apiFile = require("./env.json");
 const argon2 = require("argon2");
 const postThread = require("./posts");
+const {
+  generateVerificationCode,
+  sendVerificationEmail,
+} = require("./nodemailer");
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -140,6 +144,60 @@ app.post("/api/users/login", async (req, res) => {
 });
 
 postThread(app, { baseUrl, secretKey, axios });
+
+
+app.post("/api/users/verify", async (req, res) => {
+  if (!req.body.email) {
+    return res.status(400).json({ error: "Email is required" });
+  }
+
+  let email = encodeURIComponent(req.body.email);
+  let url = `${baseUrl}/rest/v1/Users?email=eq.${email}`;
+
+  axios.get(url, {
+    headers: {
+      apikey: secretKey,
+      Authorization: `Bearer ${secretKey}`,
+    },
+  }).then(async response => {
+
+    if (response.data.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    let code = generateVerificationCode();
+    let hashedCode = await hashPassword(code);
+    //using patch  instead of put to avoid overwriting other fields
+    await axios.patch(url, {
+      verificationCode: hashedCode,
+    }, {
+      headers: {
+        apikey: secretKey,
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+      },
+    });
+
+    let sent = await sendVerificationEmail(req.body.email, code);
+
+    if (!sent) {
+      return res.status(500).json({
+        error: "Failed to send verification email",
+      });
+    }
+
+    return res.status(200).json({
+      message: "Verification email sent",
+    });
+
+  }).catch(error => {
+    console.log(error.response?.data || error.message);
+
+    return res.status(500).json({
+      error: "Failed to send verification email",
+    });
+  });
+});
 
 app.use(express.static(path.join(__dirname)));
 
