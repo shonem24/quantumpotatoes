@@ -4,6 +4,7 @@ const axios = require("axios");
 let apiFile = require("./env.json");
 const argon2 = require("argon2");
 const postThread = require("./posts");
+const cache = require("./cache");
 const {
   generateVerificationCode,
   sendVerificationEmail,
@@ -41,6 +42,13 @@ function stripPassword(user) {
 
 //get all users from the database 
 app.get("/api/users", (req, res) => {
+  const cacheKey = "users:all";
+  const cached = cache.get(cacheKey);
+  if (cached !== undefined) {
+    console.log("Cache hit for " + cacheKey);
+    return res.status(200).json(cached);
+  }
+
   let url = `${baseUrl}/rest/v1/Users?select=*`;
 
   console.log(`Sending request to db(supabase)`);
@@ -54,6 +62,7 @@ app.get("/api/users", (req, res) => {
       const users = Array.isArray(response.data)
         ? response.data.map(stripPassword)
         : response.data;
+      cache.set(cacheKey, users);
       res.status(200).json(users);
     
     }).catch(error => {
@@ -92,6 +101,7 @@ app.post("/api/users", async (req, res) => {
     const data = Array.isArray(response.data)
       ? response.data.map(stripPassword)
       : stripPassword(response.data);
+    cache.invalidatePrefix("users:");
     res.status(200).json(data);
   }).catch(error => {
     console.log(error);

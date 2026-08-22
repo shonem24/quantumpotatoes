@@ -21,13 +21,19 @@
         <p>Browse Campus, Housing, and Co-ops discussions.</p>
 
         <div class="categories">
-          <a href="community.html">All</a>
-          <a href="community.html?category=Campus">Campus</a>
-          <a href="community.html?category=Housing">Housing</a>
-          <a href="community.html?category=Co-ops">Co-ops</a>
+          <label for="category-filter">Category</label>
+          <select id="category-filter" name="category-filter">
+            <option value="">All</option>
+            <option value="Campus">Campus</option>
+            <option value="Housing">Housing</option>
+            <option value="Co-ops">Co-ops</option>
+          </select>
         </div>
 
         <h2>New thread</h2>
+        <p id="thread-login-prompt" class="login-prompt" hidden>
+          <a href="login.html">Log in</a> to create a thread.
+        </p>
         <form id="thread-form" class="thread-form">
           <div class="form-group">
             <label for="thread-title-input">Title</label>
@@ -53,7 +59,6 @@
         <ul id="thread-list" class="thread-list"></ul>
       </main>
     </div>
-    <script src="js/data.js"></script>
     <script src="js/nav.js"></script>
     <script src="js/main.js"></script>
   </body>
