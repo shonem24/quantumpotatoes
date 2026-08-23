@@ -430,6 +430,30 @@ iframe {
   background: var(--accent-hover);
 }
 
+#edit-bio-button,
+#save-bio-button,
+#cancel-bio-button,
+#send-verify-button {
+  margin-top: 0.5rem;
+  margin-right: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#edit-bio-button:hover,
+#save-bio-button:hover,
+#cancel-bio-button:hover,
+#send-verify-button:hover {
+  background: var(--accent-hover);
+}
+
 .cta-links a[href="signup.html"] {
   background: transparent;
   color: var(--accent);

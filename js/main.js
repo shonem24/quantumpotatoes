@@ -661,11 +661,228 @@
     });
   }
 
-  function formatVerifiedBadge(user) {
-    if (user && (user.verified === true || user.verified === "true")) {
+  function editBioButton(userId, isOwnProfile, currentBio) {
+    var editButton = document.getElementById("edit-bio-button");
+    var saveButton = document.getElementById("save-bio-button");
+    var cancelButton = document.getElementById("cancel-bio-button");
+    var bioEl = document.getElementById("profile-bio");
+    var bioInput = document.getElementById("bio-input");
+    var bioEditForm = document.getElementById("bio-edit-form");
+
+    if (
+      !editButton ||
+      !saveButton ||
+      !cancelButton ||
+      !bioEl ||
+      !bioInput ||
+      !bioEditForm
+    ) {
+      return;
+    }
+
+    if (!isOwnProfile) {
+      editButton.hidden = true;
+      bioEditForm.hidden = true;
+      return;
+    }
+
+    editButton.hidden = false;
+    bioEditForm.hidden = true;
+
+    editButton.addEventListener("click", function () {
+      bioInput.value = currentBio || "";
+      bioEditForm.hidden = false;
+      editButton.hidden = true;
+      bioInput.focus();
+    });
+
+    cancelButton.addEventListener("click", function () {
+      bioEditForm.hidden = true;
+      editButton.hidden = false;
+    });
+
+    saveButton.addEventListener("click", function () {
+      var newBio = bioInput.value.trim();
+
+      fetch(`/api/users/${encodeURIComponent(userId)}/bio`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bio: newBio }),
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            console.error(result.data.error || "Could not save bio.");
+            return;
+          }
+
+          var saved;
+          if (Array.isArray(result.data)) {
+            saved = result.data[0];
+          } else {
+            saved = result.data;
+          }
+          currentBio = (saved && saved.bio) || newBio;
+          bioEl.textContent = currentBio;
+          bioEditForm.hidden = true;
+          editButton.hidden = false;
+
+          var currentUser = getCurrentUser();
+          if (currentUser && String(currentUser.id) === String(userId)) {
+            currentUser.bio = currentBio;
+            setCurrentUser(currentUser);
+          }
+        })
+        .catch(function (error) {
+          console.error(error);
+        });
+    });
+  }
+
+  function verifiedText(user) {
+    if (user && user.verified) {
       return "(verified)";
     }
     return "";
+  }
+
+  function sendVerifyButton(user, isOwnProfile) {
+    var sendButton = document.getElementById("send-verify-button");
+    var statusEl = document.getElementById("verify-send-status");
+    if (!sendButton) {
+      return;
+    }
+
+    var alreadyVerified = user && user.verified;
+
+    if (!isOwnProfile || !user || !user.email || alreadyVerified) {
+      sendButton.hidden = true;
+      if (statusEl) {
+        statusEl.hidden = true;
+      }
+      return;
+    }
+
+    sendButton.hidden = false;
+    if (statusEl) {
+      statusEl.hidden = true;
+      statusEl.textContent = "";
+    }
+
+    sendButton.onclick = function () {
+      showFormError("verify-send-error", "");
+      if (statusEl) {
+        statusEl.hidden = true;
+        statusEl.textContent = "";
+      }
+      sendButton.disabled = true;
+
+      fetch("/api/users/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          sendButton.disabled = false;
+          if (!result.ok) {
+            showFormError(
+              "verify-send-error",
+              result.data.error || "Could not send verification email."
+            );
+            return;
+          }
+
+          if (statusEl) {
+            statusEl.textContent =
+              "Check your email for a verification link.";
+            statusEl.hidden = false;
+          }
+        })
+        .catch(function () {
+          sendButton.disabled = false;
+          showFormError(
+            "verify-send-error",
+            "Could not reach the server. Is it running?"
+          );
+        });
+    };
+  }
+
+  function verifyPage() {
+    var verifyButton = document.getElementById("verify-button");
+    if (!verifyButton) {
+      return;
+    }
+    //get the email and code from the url
+    //found url search params online
+    var params = new URLSearchParams(window.location.search);
+    var email = params.get("email") || "";
+    var code = params.get("code") || "";
+
+    if (!email || !code) {
+      showFormError(
+        "verify-error",
+        "Missing email or code. Open the link from your email."
+      );
+      verifyButton.disabled = true;
+      return;
+    }
+
+    verifyButton.addEventListener("click", function () {
+      showFormError("verify-error", "");
+      verifyButton.disabled = true;
+
+      fetch("/api/users/verify/confirm", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email, code: code }),
+      })
+        .then(function (response) {
+          return response.json().then(function (data) {
+            return { ok: response.ok, data: data };
+          });
+        })
+        .then(function (result) {
+          if (!result.ok) {
+            showFormError(
+              "verify-error",
+              result.data.error || "Could not verify account."
+            );
+            verifyButton.disabled = false;
+            return;
+          }
+
+          var messageEl = document.getElementById("verify-message");
+          if (messageEl) {
+            messageEl.textContent =
+              result.data.message || "Your account is verified.";
+          }
+          verifyButton.hidden = true;
+
+          var currentUser = getCurrentUser();
+          if (
+            currentUser &&
+            String(currentUser.email).toLowerCase() ===
+              String(email).toLowerCase()
+          ) {
+            currentUser.verified = true;
+            setCurrentUser(currentUser);
+          }
+        })
+        .catch(function (error) {
+          console.error(error);
+          verifyButton.disabled = false;
+        });
+    });
   }
 
   function renderProfile() {
@@ -681,6 +898,11 @@
     var idParam = getQueryParam("id");
     var currentUser = getCurrentUser();
     var profileId = idParam || (currentUser && currentUser.id);
+    var isOwnProfile = !!(
+      currentUser &&
+      currentUser.id &&
+      String(currentUser.id) === String(profileId)
+    );
 
     if (!profileId) {
       nameEl.textContent = "Profile";
@@ -716,7 +938,7 @@
 
         var displayName =
           user.Displayname || user.Username || "User " + profileId;
-        var verified = formatVerifiedBadge(user);
+        var verified = verifiedText(user);
         nameEl.textContent = verified
           ? displayName + " " + verified
           : displayName;
@@ -736,6 +958,8 @@
         }
         detailsEl.textContent = detailParts.join(" · ");
         bioEl.textContent = user.bio || "";
+        editBioButton(profileId, isOwnProfile, user.bio || "");
+        sendVerifyButton(user, isOwnProfile);
 
         if (!threadsResult.ok) {
           activityEl.innerHTML =
@@ -863,7 +1087,7 @@
         event.preventDefault();
         showFormError("login-error", "");
 
-        var email = loginForm.email.value.trim();
+        var email = loginForm.email.value.trim().toLowerCase();
         var password = loginForm.password.value;
 
         fetch("/api/users/login", {
@@ -905,7 +1129,7 @@
         var payload = {
           Username: signupForm.Username.value.trim(),
           Displayname: signupForm.Displayname.value.trim(),
-          email: signupForm.email.value.trim(),
+          email: signupForm.email.value.trim().toLowerCase(),
           password: signupForm.password.value,
           major: signupForm.major.value.trim() || null,
           verified: false,
@@ -954,4 +1178,5 @@
   renderThread();
   renderProfile();
   wireAuthForms();
+  verifyPage();
 })();

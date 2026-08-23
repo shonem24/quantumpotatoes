@@ -79,6 +79,11 @@ app.get("/api/users", (req, res) => {
 //add a new user to the database and return the staus and the data of the user
 app.post("/api/users", async (req, res) => {
   let url = `${baseUrl}/rest/v1/Users`;
+
+  if (req.body.email) {
+    req.body.email = String(req.body.email).trim().toLowerCase();
+  }
+
   //hash the password using argon2
   if (req.body.password) {
     req.body.password = await hashPassword(req.body.password);
@@ -113,13 +118,13 @@ app.post("/api/users", async (req, res) => {
 
 
 app.post("/api/users/login", async (req, res) => {
-  //format the email for sending as url
-  let email = encodeURIComponent(req.body.email);
-  let url = `${baseUrl}/rest/v1/Users?select=*&email=eq.${email}`;
-
   if (!req.body.email || !req.body.password) {
     return res.status(400).json({ error: "Email and password are required" });
   }
+
+  //format the email for sending as url
+  let email = encodeURIComponent(String(req.body.email).trim().toLowerCase());
+  let url = `${baseUrl}/rest/v1/Users?select=*&email=eq.${email}`;
 
   //check if the email is in the database
   console.log("calling supabase to get the user");
@@ -155,14 +160,68 @@ app.post("/api/users/login", async (req, res) => {
 
 postThread(app, { baseUrl, secretKey, axios });
 
+// get a user's bio
+app.get("/api/users/:id/bio", (req, res) => {
+  let userId = req.params.id;
+  let url = `${baseUrl}/rest/v1/Users?select=id,bio&id=eq.${encodeURIComponent(userId)}`;
+
+  console.log("Getting bio from db(supabase)");
+  axios.get(url, {
+    headers: {
+      apikey: secretKey,
+      Authorization: `Bearer ${secretKey}`,
+    },
+  }).then(response => {
+    if (response.data.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    res.status(200).json(response.data[0]);
+  }).catch(error => {
+    console.log(error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to get bio" });
+  });
+});
+
+// update a user's bio
+app.post("/api/users/:id/bio", (req, res) => {
+  let userId = req.params.id;
+
+  if (req.body.bio === undefined) {
+    return res.status(400).json({ error: "Bio is required" });
+  }
+
+  let bio = String(req.body.bio).trim();
+  let url = `${baseUrl}/rest/v1/Users?id=eq.${encodeURIComponent(userId)}`;
+
+  console.log("Updating bio in db(supabase)");
+  axios.patch(url, { bio: bio }, {
+    headers: {
+      apikey: secretKey,
+      Authorization: `Bearer ${secretKey}`,
+      "Content-Type": "application/json",
+      Prefer: "return=representation",
+    },
+  }).then(response => {
+    if (response.data.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    cache.invalidatePrefix("users:");
+    res.status(200).json(response.data);
+  }).catch(error => {
+    console.log(error.response?.data || error.message);
+    res.status(500).json({ error: "Failed to update bio" });
+  });
+});
 
 app.post("/api/users/verify", async (req, res) => {
   if (!req.body.email) {
     return res.status(400).json({ error: "Email is required" });
   }
 
-  let email = encodeURIComponent(req.body.email);
-  let url = `${baseUrl}/rest/v1/Users?email=eq.${email}`;
+  let email = String(req.body.email).trim().toLowerCase();
+  let url = `${baseUrl}/rest/v1/Users?email=eq.${encodeURIComponent(email)}`;
 
   axios.get(url, {
     headers: {
@@ -188,7 +247,7 @@ app.post("/api/users/verify", async (req, res) => {
       },
     });
 
-    let sent = await sendVerificationEmail(req.body.email, code);
+    let sent = await sendVerificationEmail(email, code);
 
     if (!sent) {
       return res.status(500).json({
@@ -206,6 +265,67 @@ app.post("/api/users/verify", async (req, res) => {
     return res.status(500).json({
       error: "Failed to send verification email",
     });
+  });
+});
+
+// confirm email verification: body { email, code }
+app.post("/api/users/verify/confirm", async (req, res) => {
+  if (!req.body.email || !req.body.code) {
+    return res.status(400).json({ error: "Email and code are required" });
+  }
+
+  let email = String(req.body.email).trim().toLowerCase();
+  let code = String(req.body.code).trim();
+  let url = `${baseUrl}/rest/v1/Users?email=eq.${encodeURIComponent(email)}`;
+
+  axios.get(url, {
+    headers: {
+      apikey: secretKey,
+      Authorization: `Bearer ${secretKey}`,
+    },
+  }).then(async response => {
+    if (response.data.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    let user = response.data[0];
+
+    if (user.verified) {
+      return res.status(200).json({ message: "Account already verified" });
+    }
+
+    if (!user.verificationCode) {
+      return res.status(400).json({
+        error: "No verification pending in db.",
+      });
+    }
+
+    let match = await argon2.verify(user.verificationCode, code);
+    if (!match) {
+      return res.status(400).json({ error: "Invalid verification code" });
+    }
+
+    await axios.patch(
+      url,
+      {
+        verified: true,
+        verificationCode: null,
+      },
+      {
+        headers: {
+          apikey: secretKey,
+          Authorization: `Bearer ${secretKey}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    cache.invalidatePrefix("users:");
+
+    return res.status(200).json({ message: "Account verified" });
+  }).catch(error => {
+    console.log(error.response?.data || error.message);
+    return res.status(500).json({ error: "Failed to verify account" });
   });
 });
 
