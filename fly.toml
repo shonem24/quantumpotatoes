@@ -1,9 +1,9 @@
-# fly.toml app configuration file generated for quantumpotatoes-bxb-lw on 2026-08-23T02:35:56Z
+# fly.toml app configuration file for quantumpotatoes
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'quantumpotatoes-bxb-lw'
+app = 'quantumpotatoes'
 primary_region = 'ewr'
 
 [build]

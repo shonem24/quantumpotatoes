@@ -11,8 +11,8 @@ let transporter = nodemailer.createTransport({
   port: 465,
   secure: true,
   auth: {
-    user: envFile.EMAIL_USER,
-    pass: envFile.EMAIL_APP_PASSWORD,
+    user: process.env.EMAIL_USER || envFile.EMAIL_USER,
+    pass: process.env.EMAIL_APP_PASSWORD || envFile.EMAIL_APP_PASSWORD,
   },
 });
 
@@ -37,17 +37,18 @@ function generateVerificationCode() {
 
 async function sendVerificationEmail(email, code) {
   try {
-    let port = process.env.PORT || 3000;
+    let baseUrl =
+      process.env.APP_URL ||
+      "http://localhost:" + (process.env.PORT || 3000);
     let link =
-      "http://localhost:" +
-      port +
+      baseUrl +
       "/verify.html?email=" +
       encodeURIComponent(email) +
       "&code=" +
       encodeURIComponent(code);
 
     const info = await transporter.sendMail({
-      from: envFile.EMAIL_USER,
+      from: process.env.EMAIL_USER || envFile.EMAIL_USER,
       to: email,
       subject: "Campus Connect — Verify your email",
       text:

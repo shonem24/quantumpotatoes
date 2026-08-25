@@ -18,9 +18,9 @@ app.use(express.json());
 //pretty print the json response
 app.set("json spaces", 2);
 
-// the .env is in the shared project drive
-let baseUrl = apiFile.SUPABASE_URL;
-let secretKey = apiFile.SUPABASE_SECRET_KEY;
+// the .env is in the shared project drive (Fly secrets override env.json)
+let baseUrl = process.env.SUPABASE_URL || apiFile.SUPABASE_URL;
+let secretKey = process.env.SUPABASE_SECRET_KEY || apiFile.SUPABASE_SECRET_KEY;
 
 function hashPassword(password) {
   return argon2.hash(password, {
