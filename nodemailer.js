@@ -1,6 +1,11 @@
 const crypto = require("crypto");
 const nodemailer = require("nodemailer");
-const envFile = require("./env.json");
+let envFile = {};
+try {
+  envFile = require("./env.json");
+} catch (err) {
+  envFile = {};
+}
 
 /*
     derived from https://nodemailer.com/

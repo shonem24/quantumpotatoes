@@ -1,7 +1,12 @@
 const express = require("express");
 const path = require("path");
 const axios = require("axios");
-let apiFile = require("./env.json");
+let apiFile = {};
+try {
+  apiFile = require("./env.json");
+} catch (err) {
+  apiFile = {};
+}
 const argon2 = require("argon2");
 const postThread = require("./posts");
 const cache = require("./cache");
@@ -18,7 +23,7 @@ app.use(express.json());
 //pretty print the json response
 app.set("json spaces", 2);
 
-// the .env is in the shared project drive (Fly secrets override env.json)
+// local: env.json or Fly: secrets
 let baseUrl = process.env.SUPABASE_URL || apiFile.SUPABASE_URL;
 let secretKey = process.env.SUPABASE_SECRET_KEY || apiFile.SUPABASE_SECRET_KEY;
 
