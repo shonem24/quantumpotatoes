@@ -125,12 +125,12 @@
   function updateThreadFormVisibility(category) {
     var form = document.getElementById("thread-form");
     var prompt = document.getElementById("thread-login-prompt");
-    var toggle = document.getElementById("toggle-thread-form-button");
+    var button = document.getElementById("toggle-thread-form-button");
     var currentUser = getCurrentUser();
     var loggedIn = currentUser && currentUser.id;
 
-    if (toggle) {
-      toggle.hidden = !loggedIn;
+    if (button) {
+      button.hidden = !loggedIn;
     }
     if (form) {
       if (!loggedIn) {
@@ -151,31 +151,27 @@
 
   function setupThreadFormToggle() {
     var form = document.getElementById("thread-form");
-    var toggle = document.getElementById("toggle-thread-form-button");
-    if (!form || !toggle || toggle.getAttribute("data-setup") === "1") {
-      return;
-    }
-    toggle.setAttribute("data-setup", "1");
-    toggle.addEventListener("click", function () {
-      form.hidden = !form.hidden;
-      if (form.hidden) {
-        toggle.textContent = "New thread";
-      } else {
-        toggle.textContent = "Cancel";
-      }
+    var button = document.getElementById("toggle-thread-form-button");
 
-      if (!form.hidden) {
-        var titleInput = form.elements.namedItem("title");
-        if (titleInput) {
-          titleInput.focus();
+    button.addEventListener("click", function () {
+      if (form.hidden) {
+        form.hidden = false;
+        button.textContent = "Cancel";
+
+        var title = form.elements.namedItem("title");
+        if (title) {
+          title.focus();
         }
+      } else {
+        form.hidden = true;
+        button.textContent = "New thread";
       }
     });
 
     if (form.hidden) {
-      toggle.textContent = "New thread";
+      button.textContent = "New thread";
     } else {
-      toggle.textContent = "Cancel";
+      button.textContent = "Cancel";
     }
   }
 
