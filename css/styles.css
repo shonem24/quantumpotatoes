@@ -496,6 +496,7 @@ iframe {
 #edit-bio-button,
 #save-bio-button,
 #cancel-bio-button,
+#verify-button,
 #send-verify-button,
 #toggle-thread-form-button {
   margin-top: 0.5rem;
@@ -515,6 +516,7 @@ iframe {
 #edit-bio-button:hover,
 #save-bio-button:hover,
 #cancel-bio-button:hover,
+#verify-button:hover,
 #send-verify-button:hover,
 #toggle-thread-form-button:hover {
   background: var(--accent-hover);
