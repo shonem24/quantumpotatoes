@@ -264,13 +264,22 @@ button[type="submit"]:hover {
   margin: 0.2rem 0;
 }
 
-.thread-list a {
+.thread-list .thread-title-link {
   font-weight: 600;
   text-decoration: none;
 }
 
-.thread-list a:hover {
+.thread-list .thread-title-link:hover {
   text-decoration: underline;
+}
+
+.user-profile-link,
+.user-profile-link:hover,
+.user-profile-link:focus,
+.user-profile-link:visited {
+  color: inherit;
+  font-weight: 400;
+  text-decoration: none;
 }
 
 .thread-meta,
@@ -487,9 +496,11 @@ iframe {
 #edit-bio-button,
 #save-bio-button,
 #cancel-bio-button,
-#send-verify-button {
+#send-verify-button,
+#toggle-thread-form-button {
   margin-top: 0.5rem;
   margin-right: 0.5rem;
+  margin-bottom: 1rem;
   padding: 0.35rem 0.75rem;
   border: none;
   border-radius: var(--radius);
@@ -504,7 +515,8 @@ iframe {
 #edit-bio-button:hover,
 #save-bio-button:hover,
 #cancel-bio-button:hover,
-#send-verify-button:hover {
+#send-verify-button:hover,
+#toggle-thread-form-button:hover {
   background: var(--accent-hover);
 }
 

@@ -39,10 +39,13 @@
         </div>
 
         <h2>New thread</h2>
+        <button type="button" id="toggle-thread-form-button" hidden>
+          New thread
+        </button>
         <p id="thread-login-prompt" class="login-prompt" hidden>
           <a href="login.html">Log in</a> to create a thread.
         </p>
-        <form id="thread-form" class="thread-form">
+        <form id="thread-form" class="thread-form" hidden>
           <div class="form-group">
             <label for="thread-title-input">Title</label>
             <input id="thread-title-input" name="title" type="text" required />

@@ -41,6 +41,15 @@
     return user.Displayname || user.Username || "User " + userId;
   }
 
+  function profileLink(usersById, userId) {
+    //create a link to the profile page for the user
+    var link = document.createElement("a");
+    link.className = "user-profile-link";
+    link.href = "profile.html?id=" + encodeURIComponent(userId);
+    link.textContent = authorLabel(usersById, userId);
+    return link;
+  }
+
   function fetchJson(url, options) {
     return fetch(url, options).then(function (response) {
       return response.json().then(function (data) {
@@ -116,11 +125,17 @@
   function updateThreadFormVisibility(category) {
     var form = document.getElementById("thread-form");
     var prompt = document.getElementById("thread-login-prompt");
+    var toggle = document.getElementById("toggle-thread-form-button");
     var currentUser = getCurrentUser();
     var loggedIn = currentUser && currentUser.id;
 
+    if (toggle) {
+      toggle.hidden = !loggedIn;
+    }
     if (form) {
-      form.hidden = !loggedIn;
+      if (!loggedIn) {
+        form.hidden = true;
+      }
     }
     if (prompt) {
       prompt.hidden = !!loggedIn;
@@ -131,6 +146,36 @@
       if (categoryInput) {
         categoryInput.value = category;
       }
+    }
+  }
+
+  function setupThreadFormToggle() {
+    var form = document.getElementById("thread-form");
+    var toggle = document.getElementById("toggle-thread-form-button");
+    if (!form || !toggle || toggle.getAttribute("data-setup") === "1") {
+      return;
+    }
+    toggle.setAttribute("data-setup", "1");
+    toggle.addEventListener("click", function () {
+      form.hidden = !form.hidden;
+      if (form.hidden) {
+        toggle.textContent = "New thread";
+      } else {
+        toggle.textContent = "Cancel";
+      }
+
+      if (!form.hidden) {
+        var titleInput = form.elements.namedItem("title");
+        if (titleInput) {
+          titleInput.focus();
+        }
+      }
+    });
+
+    if (form.hidden) {
+      toggle.textContent = "New thread";
+    } else {
+      toggle.textContent = "Cancel";
     }
   }
 
@@ -160,6 +205,7 @@
     if (search) {
       search = search.trim();
     }
+    setupThreadFormToggle();
     updateThreadFormVisibility(category);
     setupCreateThreadForm();
     setupCommunityFilters(category, search);
@@ -214,13 +260,14 @@
 
           var titleWrap = el("p");
           var titleLink = el("a");
+          titleLink.className = "thread-title-link";
           titleLink.href = "thread.html?id=" + encodeURIComponent(thread.id);
           titleLink.textContent = thread.title || "Untitled";
           titleWrap.appendChild(titleLink);
           item.appendChild(titleWrap);
 
           var author = el("p");
-          author.textContent = authorLabel(usersById, thread.userId);
+          author.appendChild(profileLink(usersById, thread.userId));
           item.appendChild(author);
 
           var preview = el("p");
@@ -465,12 +512,11 @@
     var block = el("div", classes.join(" "));
 
     var meta = el("p");
-    var metaParts = [authorLabel(usersById, comment.userId)];
+    meta.appendChild(profileLink(usersById, comment.userId));
     var date = formatDate(comment.createdAt || comment.created_at);
     if (date) {
-      metaParts.push(date);
+      meta.appendChild(document.createTextNode(" · " + date));
     }
-    meta.textContent = metaParts.join(" · ");
     block.appendChild(meta);
 
     var body = el("p");
@@ -613,12 +659,12 @@
         categoryEl.textContent = thread.category || "";
         titleEl.textContent = thread.title || "Untitled";
 
-        var metaParts = [authorLabel(usersById, thread.userId)];
+        clear(metaEl);
+        metaEl.appendChild(profileLink(usersById, thread.userId));
         var date = formatDate(thread.createdAt || thread.created_at);
         if (date) {
-          metaParts.push(date);
+          metaEl.appendChild(document.createTextNode(" · " + date));
         }
-        metaEl.textContent = metaParts.join(" · ");
         bodyEl.textContent = thread.content || "";
 
         if (!commentsResult.ok) {
