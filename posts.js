@@ -3,9 +3,21 @@ const cache = require("./cache");
 const ALLOWED_CATEGORIES = ["Campus", "Housing", "Co-ops"];
 const MAX_TITLE_LENGTH = 120;
 const MAX_CONTENT_LENGTH = 5000;
+const MAX_SEARCH_LENGTH = 100;
 
 function trimString(value) {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function escapeSearchPattern(value) {
+  return value.replace(/\\/g, "\\\\").replace(/%/g, "\\%").replace(/_/g, "\\_");
+}
+
+function buildSearchFilter(search) {
+  const term = escapeSearchPattern(trimString(search));
+  const encodedTerm = encodeURIComponent(term);
+  const pattern = `%25${encodedTerm}%25`;
+  return `or=(title.ilike.${pattern},content.ilike.${pattern})`;
 }
 
 function supabaseHeaders(secretKey) {
@@ -44,10 +56,15 @@ function threadsCacheKey(query) {
   if (query.id) {
     return "threads:id:" + query.id;
   }
-  if (query.category) {
-    return "threads:category:" + query.category;
+
+  let key = query.category
+    ? "threads:category:" + query.category
+    : "threads:all";
+  const search = trimString(query.search);
+  if (search) {
+    key += ":search:" + search.toLowerCase();
   }
-  return "threads:all";
+  return key;
 }
 
 function postThread(app, { baseUrl, secretKey, axios }) {
@@ -55,6 +72,13 @@ function postThread(app, { baseUrl, secretKey, axios }) {
     if (req.query.category && !ALLOWED_CATEGORIES.includes(req.query.category)) {
       return res.status(400).json({
         error: "Invalid category. Use Campus, Housing, or Co-ops.",
+      });
+    }
+
+    const search = trimString(req.query.search);
+    if (search.length > MAX_SEARCH_LENGTH) {
+      return res.status(400).json({
+        error: `Search must be ${MAX_SEARCH_LENGTH} characters or fewer`,
       });
     }
 
@@ -73,6 +97,10 @@ function postThread(app, { baseUrl, secretKey, axios }) {
 
     if (req.query.category) {
       url += `&category=eq.${encodeURIComponent(req.query.category)}`;
+    }
+
+    if (search && !req.query.id) {
+      url += `&${buildSearchFilter(search)}`;
     }
 
     console.log("Sending request to db(supabase) for threads");
@@ -324,11 +352,6 @@ function postThread(app, { baseUrl, secretKey, axios }) {
         if (String(parent.threadId) !== String(threadId)) {
           return res.status(400).json({
             error: "Parent comment is not on this thread",
-          });
-        }
-        if (parent.parentCommentId !== null && parent.parentCommentId !== undefined) {
-          return res.status(400).json({
-            error: "Cannot reply to a reply",
           });
         }
       } catch (error) {

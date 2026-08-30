@@ -62,28 +62,55 @@
     });
   }
 
-  function setupCategoryFilter(category) {
-    var filter = document.getElementById("category-filter");
-    if (!filter) {
+  function buildCommunityUrl(category, search) {
+    var params = new URLSearchParams();
+    if (category) {
+      params.set("category", category);
+    }
+    if (search) {
+      params.set("search", search);
+    }
+    var query = params.toString();
+    return query ? "community.html?" + query : "community.html";
+  }
+
+  function buildThreadsApiUrl(category, search) {
+    var params = new URLSearchParams();
+    if (category) {
+      params.set("category", category);
+    }
+    if (search) {
+      params.set("search", search);
+    }
+    var query = params.toString();
+    return query ? "/api/threads?" + query : "/api/threads";
+  }
+
+  function setupCommunityFilters(category, search) {
+    var categoryFilter = document.getElementById("category-filter");
+    var searchInput = document.getElementById("thread-search");
+    var searchButton = document.getElementById("thread-search-button");
+    if (!categoryFilter && !searchInput) {
       return;
     }
 
-    filter.value = category || "";
-
-    if (filter.getAttribute("data-setup") === "1") {
-      return;
+    function applyCommunityFilters() {
+      var currentCategory = categoryFilter ? categoryFilter.value : "";
+      var currentSearch = searchInput ? searchInput.value.trim() : "";
+      window.location.href = buildCommunityUrl(currentCategory, currentSearch);
     }
-    filter.setAttribute("data-setup", "1");
 
-    filter.addEventListener("change", function () {
-      var selected = filter.value;
-      if (selected) {
-        window.location.href =
-          "community.html?category=" + encodeURIComponent(selected);
-      } else {
-        window.location.href = "community.html";
-      }
-    });
+    if (categoryFilter) {
+      categoryFilter.value = category || "";
+    }
+    if (searchInput) {
+      searchInput.value = search || "";
+    }
+
+    if (searchButton && searchButton.getAttribute("data-setup") !== "1") {
+      searchButton.setAttribute("data-setup", "1");
+      searchButton.addEventListener("click", applyCommunityFilters);
+    }
   }
 
   function updateThreadFormVisibility(category) {
@@ -129,14 +156,15 @@
     }
 
     var category = getQueryParam("category");
+    var search = getQueryParam("search");
+    if (search) {
+      search = search.trim();
+    }
     updateThreadFormVisibility(category);
     setupCreateThreadForm();
-    setupCategoryFilter(category);
+    setupCommunityFilters(category, search);
 
-    var threadsUrl = "/api/threads";
-    if (category) {
-      threadsUrl += "?category=" + encodeURIComponent(category);
-    }
+    var threadsUrl = buildThreadsApiUrl(category, search);
 
     clear(list);
     var loading = el("li");
@@ -165,7 +193,9 @@
 
         if (threads.length === 0) {
           var empty = el("li");
-          empty.textContent = "No threads in this category yet.";
+          empty.textContent = search
+            ? "No threads match your search."
+            : "No threads in this category yet.";
           list.appendChild(empty);
           return;
         }
@@ -425,7 +455,14 @@
   }
 
   function renderSingleComment(comment, usersById, options) {
-    var block = el("div", options && options.isReply ? "comment comment-reply" : "comment");
+    var classes = ["comment"];
+    if (options && options.isReply) {
+      classes.push("comment-reply");
+    }
+    if (options && options.depth) {
+      classes.push("comment-depth-" + options.depth);
+    }
+    var block = el("div", classes.join(" "));
 
     var meta = el("p");
     var metaParts = [authorLabel(usersById, comment.userId)];
@@ -465,6 +502,29 @@
     return block;
   }
 
+  function renderCommentBranch(comment, byParent, usersById, options, depth) {
+    var block = renderSingleComment(comment, usersById, {
+      allowReply: options.allowReply,
+      threadId: options.threadId,
+      commentsEl: options.commentsEl,
+      isReply: depth > 0,
+      depth: depth,
+    });
+
+    var children = byParent[String(comment.id)] || [];
+    if (children.length) {
+      var repliesWrap = el("div", "comment-replies");
+      children.forEach(function (child) {
+        repliesWrap.appendChild(
+          renderCommentBranch(child, byParent, usersById, options, depth + 1)
+        );
+      });
+      block.appendChild(repliesWrap);
+    }
+
+    return block;
+  }
+
   function renderCommentsList(commentsEl, comments, usersById, threadId) {
     clear(commentsEl);
 
@@ -477,26 +537,16 @@
 
     var tree = buildCommentTree(comments);
     var loggedIn = !!(getCurrentUser() && getCurrentUser().id);
+    var options = {
+      allowReply: loggedIn && !!threadId,
+      threadId: threadId,
+      commentsEl: commentsEl,
+    };
 
     tree.roots.forEach(function (comment) {
-      var block = renderSingleComment(comment, usersById, {
-        allowReply: loggedIn && !!threadId,
-        threadId: threadId,
-        commentsEl: commentsEl,
-      });
-
-      var replies = tree.byParent[String(comment.id)] || [];
-      if (replies.length) {
-        var repliesWrap = el("div", "comment-replies");
-        replies.forEach(function (reply) {
-          repliesWrap.appendChild(
-            renderSingleComment(reply, usersById, { isReply: true })
-          );
-        });
-        block.appendChild(repliesWrap);
-      }
-
-      commentsEl.appendChild(block);
+      commentsEl.appendChild(
+        renderCommentBranch(comment, tree.byParent, usersById, options, 0)
+      );
     });
   }
 
