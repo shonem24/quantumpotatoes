@@ -20,7 +20,7 @@
         <h1>Drexel University</h1>
         <p>Browse Campus, Housing, and Co-ops discussions.</p>
 
-        <div class="categories">
+        <div class="categories community-filters">
           <label for="category-filter">Category</label>
           <select id="category-filter" name="category-filter">
             <option value="">All</option>
@@ -28,6 +28,14 @@
             <option value="Housing">Housing</option>
             <option value="Co-ops">Co-ops</option>
           </select>
+          <label for="thread-search">Search</label>
+          <input
+            id="thread-search"
+            type="search"
+            name="search"
+            placeholder="Search threads..."
+          />
+          <button id="thread-search-button" type="button">Search</button>
         </div>
 
         <h2>New thread</h2>
